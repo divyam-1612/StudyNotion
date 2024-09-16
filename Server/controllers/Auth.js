@@ -11,60 +11,64 @@ const { passwordUpdated } = require("../mail/templates/passwordUpdated")
 // send OTP
 
 exports.sendOTP = async (req, res) => {
-  try {
-    // fetch email from req.body
-    const { email } = req.body;
-
-    //check if user already exists
-    const checkUserPresent = await User.findOne({ email });
-
-    // if user exists
-    if (checkUserPresent) {
-      return res.status(401).json({
-        success: false,
-        message: "user already registered",
+    try {
+      // fetch email from req.body
+      const { email } = req.body;
+  
+      //check if user already exists
+      const checkUserPresent = await User.findOne({ email });
+  
+      // if user exists
+      if (checkUserPresent) {
+        return res.status(401).json({
+          success: false,
+          message: "User already registered",
+        });
+      }
+  
+      // generate otp
+      var otp = otpGenerator.generate(6, {
+          upperCaseAlphabets: false,
+          lowerCaseAlphabets: false,
+          specialChars: false,
       });
-    }
-
-    // generate otp
-    var otp = otpGenerator.generate(6, {
-        upperCaseAlphabets: false,
-        lowerCaseAlphabets: false,
-        specialChars: false,
-    })
-    console.log("OTP generated: ", otp);
-
-    // check uniqueness of otp
-    let result = await OTP.findOne({otp: otp});
-
-    while(result){
+      
+  
+      // check uniqueness of otp
+      let result = await OTP.findOne({ otp });
+      
+  
+      while(result) {
         otp = otpGenerator.generate(6, {
             upperCaseAlphabets: false,
             lowerCaseAlphabets: false,
             specialChars: false,
-        }) 
-        result = await OTP.findOne({otp: otp})
+        });
+        result = await OTP.findOne({ otp });
+      }
+  
+      // create an entry for otp
+      const otpPayload = { email, otp };
+      
+  
+      const otpBody = await OTP.create(otpPayload);
+      console.log(otpBody);
+  console.log("OTP generated: ****", otp);
+      return res.status(201).json({
+          success: true,
+          message: 'OTP sent successfully',
+          otpBody
+      });
+  
+    } catch (error) {
+      console.log(error);
+      return res.status(500).json({
+          success: false,
+          message: 'Error in sending OTP'
+      });
     }
-
-    // create an entry for otp
-    const otpPayload = {email , otp}
-
-    const otpBody = await OTP.create(otpPayload);
-    console.log(otpBody)
-    return res.json({
-        success: true,
-        message: 'otp sent',
-        otpBody
-    })
-
-  } catch (error) {
-    console.log(error)
-    return res.json({
-        success: false,
-        message: 'Error in sending OTP'
-    })
-  }
-};
+  };
+  
 
 //  signup
 
@@ -273,7 +277,7 @@ exports.changePassword = async (req, res) => {
             `Password updated successfully for ${updatedUserDetails.firstName} ${updatedUserDetails.lastName}`
           )
         )
-        console.log("Email sent successfully:", emailResponse.response)
+        console.log("Emaill sent successfully:", emailResponse.response)
       } catch (error) {
         // If there's an error sending the email, log the error and return a 500 (Internal Server Error) error
         console.error("Error occurred while sending email:", error)
